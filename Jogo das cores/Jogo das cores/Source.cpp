@@ -1,9 +1,9 @@
-/* Hello Triangle - cÛdigo adaptado de https://learnopengl.com/#!Getting-started/Hello-Triangle 
+/* Hello Triangle - c√≥digo adaptado de https://learnopengl.com/#!Getting-started/Hello-Triangle
  *
  * Adaptado por Rossana Baptista Queiroz
- * para a disciplina de Processamento Gr·fico - Unisinos
- * Vers„o inicial: 7/4/2017
- * ⁄ltima atualizaÁ„o em 14/08/2023
+ * para a disciplina de Processamento Gr√°fico - Unisinos
+ * Vers√£o inicial: 7/4/2017
+ * √öltima atualiza√ß√£o em 14/08/2023
  *
  */
 
@@ -13,35 +13,84 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <random>
+#include <cmath>
+#include <thread>
+#include <chrono>
 
 using namespace std;
 
-//Classe para manipulaÁ„o dos shaders
+//Classe para manipula√ß√£o dos shaders
 #include "Shader.h"
 
-// ProtÛtipo da funÁ„o de callback da GLFW
+// Fun√ß√£o para gerar uma cor aleat√≥ria evitando tons muito escuros
+void initRandomColors(std::vector<glm::vec3>& colors) {
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_real_distribution<float> dis(0.1f, 1.0f); // Valores maiores que 0.3 para evitar tons muito escuros
+
+	for (int i = 0; i < colors.size(); ++i) {
+		colors[i] = glm::vec3(dis(gen), dis(gen), dis(gen));
+	}
+}
+
+// Prot√≥tipo da fun√ß√£o de callback da GLFW
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 
 
-// ProtÛtipos das funÁıes
+// Prot√≥tipos das fun√ß√µes
 int setup();
-void pickColor(GLdouble xpos, GLdouble ypos);
-//initRandomColors();
+void pickColor(GLdouble xpos, GLdouble ypos, unsigned char pixel[4]);
+void initRandomColors(std::vector<glm::vec3>& colors);
+float colorDistance(unsigned char color1[4], glm::vec3 color2);
+void gameManager(unsigned char pixel[4], std::vector<glm::vec3>& colors);
 
-// Dimensıes da janela (pode ser alterado em tempo de execuÁ„o)
+// Dimens√µes da janela (pode ser alterado em tempo de execu√ß√£o)
 const GLuint WIDTH = 1024, HEIGHT = 768;
-const int COLUMNS = 5, LINES = 11;
+const int COLUMNS = 5, LINES = 13;
+static std::vector<glm::vec3> colors(COLUMNS* LINES);
 
-// FunÁ„o MAIN
+
+// L√≥gica para game
+std::string player1Name;
+std::string player2Name;
+
+int jogadasRestantesPlayer1 = 3;
+int jogadasRestantesPlayer2 = 3;
+
+std::string playerAtual;
+
+int pontuacaoPlayer1 = 0;
+int pontuacaoPlayer2 = 0;
+
+std::string sorteioInicial() {
+	// Inicializa o gerador de n√∫meros aleat√≥rios
+	srand(time(0));
+
+	// Gera um n√∫mero aleat√≥rio entre 1 e 2
+	int resultado = rand() % 2 + 1;
+
+	// Retorna o nome do jogador correspondente ao resultado
+	if (resultado == 1) {
+		playerAtual = player1Name;
+		return player1Name;
+	}
+	else {
+		playerAtual = player2Name;
+		return player2Name;
+	}
+}
+
+// Fun√ß√£o MAIN
 int main()
 {
-	// InicializaÁ„o da GLFW
+	// Inicializa√ß√£o da GLFW
 	glfwInit();
 
-	//Muita atenÁ„o aqui: alguns ambientes n„o aceitam essas configuraÁıes
-	//VocÍ deve adaptar para a vers„o do OpenGL suportada por sua placa
-	//Sugest„o: comente essas linhas de cÛdigo para desobrir a vers„o e
+	//Muita aten√ß√£o aqui: alguns ambientes n√£o aceitam essas configura√ß√µes
+	//Voc√™ deve adaptar para a vers√£o do OpenGL suportada por sua placa
+	//Sugest√£o: comente essas linhas de c√≥digo para desobrir a vers√£o e
 	//depois atualize (por exemplo: 4.5 com 4 e 5)
 	/*glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
@@ -52,28 +101,40 @@ int main()
 //	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 //#endif
 
-	// CriaÁ„o da janela GLFW
+	// Cria√ß√£o da janela GLFW
 	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Jogo das cores", nullptr, nullptr);
 	glfwSetWindowAttrib(window, GLFW_RESIZABLE, GLFW_FALSE);
 	glfwMakeContextCurrent(window);
 
-	// Fazendo o registro da funÁ„o de callback para a janela GLFW
+	// Fazendo o registro da fun√ß√£o de callback para a janela GLFW
 	glfwSetKeyCallback(window, key_callback);
 	glfwSetMouseButtonCallback(window, mouse_button_callback);
 
-	// GLAD: carrega todos os ponteiros d funÁıes da OpenGL
+	// GLAD: carrega todos os ponteiros d fun√ß√µes da OpenGL
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
 		std::cout << "Failed to initialize GLAD" << std::endl;
 	}
 
-	// Obtendo as informaÁıes de vers„o
+	// Obtendo as informa√ß√µes de vers√£o
 	const GLubyte* renderer = glGetString(GL_RENDERER);
 	const GLubyte* version = glGetString(GL_VERSION);
-	cout << "Renderer: " << renderer << endl;
-	cout << "OpenGL version supported " << version << endl;
+	// cout << "Renderer: " << renderer << endl;
+	// cout << "OpenGL version supported " << version << endl;
+	cout << "Bem vindo ao Jogo das Cores" << endl;
 
-	// Definindo as dimensıes da viewport com as mesmas dimensıes da janela da aplicaÁ„o
+	std::cout << "Digite o nome do Player 1: ";
+	std::cin >> player1Name;
+
+	std::cout << "Digite o nome do Player 2: ";
+	std::cin >> player2Name;
+
+	std::string jogadorInicial = sorteioInicial();
+
+	std::cout << "Jogador que inicia: " << jogadorInicial << std::endl;
+
+
+	// Definindo as dimens√µes da viewport com as mesmas dimens√µes da janela da aplica√ß√£o
 	int width, height;
 	glfwGetFramebufferSize(window, &width, &height);
 	glViewport(0, 0, width, height);
@@ -81,18 +142,32 @@ int main()
 
 	// Compilando e buildando o shader
 	Shader shader("../shaders/retangulo.vs", "../shaders/retangulo.fs");
-	Shader shaderPalete("../shaders/palete.vs", "../shaders/palete.fs");
+	//Shader shaderPalete("../shaders/palete.vs", "../shaders/palete.fs");
 
 	// Gerando um buffer simples
 	GLuint VAO = setup();
-	
+
 	glm::mat4 model = glm::mat4(1);
 
-	// Loop da aplicaÁ„o - "game loop"
-	while (!glfwWindowShouldClose(window))
+	//std::vector<glm::vec3> colors(COLUMNS * LINES);
+	initRandomColors(colors);
+
+	bool endGame = true;
+
+	// Loop da aplica√ß√£o - "game loop"
+	while (!glfwWindowShouldClose(window) && endGame)
 	{
 
-		// Checa se houveram eventos de input (key pressed, mouse moved etc.) e chama as funÁıes de callback correspondentes
+		if (jogadasRestantesPlayer1 == 0 && jogadasRestantesPlayer2 == 0) {
+			cout << "\nPlayer vencedor: " << ((pontuacaoPlayer1 > pontuacaoPlayer2) ? player1Name : player2Name) << " com " << ((pontuacaoPlayer1 > pontuacaoPlayer2) ? pontuacaoPlayer1 : pontuacaoPlayer2) << " pontos" << endl;
+			
+			endGame = false;
+
+			// Aguarda 5 segundos antes de fechar a aplica√ß√£o
+			std::this_thread::sleep_for(std::chrono::seconds(5));
+		}
+
+		// Checa se houveram eventos de input (key pressed, mouse moved etc.) e chama as fun√ß√µes de callback correspondentes
 		glfwPollEvents();
 
 		// Limpa o buffer de cor
@@ -100,37 +175,28 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glBindVertexArray(VAO); //Conectando ao buffer de geometria
-		
-		glm::vec3 color(0.0f, 0.0f, 1.0f); // sugest„o
+
+		//glm::vec3 color(0.0f, 1.0f, 1.0f); // sugest√£o
 
 		shader.Use();
 		GLfloat xc = -0.77f,
-			    xl = 0.90f;
-		for (int c = 0; c < COLUMNS; c++) 
+			xl = 0.90f;
+		int colorIndex = 0;
+		for (int c = 0; c < COLUMNS; c++)
 			for (int l = 0; l < LINES; l++) {
 
-			shader.setVec3("cor", color.r, color.g, color.b); // sugest„o colorMatrix[COLUMNS][LINES] 
+				shader.setVec3("cor", colors[colorIndex].r, colors[colorIndex].g, colors[colorIndex].b);
+				colorIndex++;
 
-			model = glm::mat4(1);
+				model = glm::mat4(1);
 
-			model = glm::translate(model, glm::vec3(xc + c * 0.385, xl - l * 0.125, 0)); // sugest„o
-			model = glm::scale(model, glm::vec3(0.38, 0.38, 1)); // sugest„o
+				model = glm::translate(model, glm::vec3(xc + c * 0.385, xl - l * 0.125, 0)); // sugest√£o
+				model = glm::scale(model, glm::vec3(0.38, 0.38, 1)); // sugest√£o
 
-			shader.setMat4("model", glm::value_ptr(model));
+				shader.setMat4("model", glm::value_ptr(model));
 
-			glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-		}
-		
-		shaderPalete.Use();
-
-		model = glm::mat4(1);
-
-		model = glm::translate(model, glm::vec3(0.70, -0.70, 0)); 
-		model = glm::scale(model, glm::vec3(0.5, 0.5, 1)); 
-
-		shaderPalete.setMat4("model", glm::value_ptr(model));
-
-		glDrawArrays(GL_TRIANGLE_FAN, 4, 4);
+				glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+			}
 
 		glBindVertexArray(0); //Desconectando o buffer de geometria
 
@@ -139,55 +205,62 @@ int main()
 	}
 	// Pede pra OpenGL desalocar os buffers
 	glDeleteVertexArrays(1, &VAO);
-	// Finaliza a execuÁ„o da GLFW, limpando os recursos alocados por ela
+	// Finaliza a execu√ß√£o da GLFW, limpando os recursos alocados por ela
 	glfwTerminate();
 	return 0;
 }
 
-// FunÁ„o de callback de teclado
+// Fun√ß√£o de callback de teclado
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, GL_TRUE);
 }
 
-// FunÁ„o de callback de clique do bot„o
+// Fun√ß√£o de callback de clique do bot√£o
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
+	static unsigned char pixel[4];
 	GLdouble xpos, ypos;
 	int w, h;
-	
+
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
 		glfwGetCursorPos(window, &xpos, &ypos);
-		cout << "X: " << xpos << " Y: " << ypos << endl; // posic„o do pixel
+		// cout << "\nX: " << xpos << " Y: " << ypos << endl; // posi√ß√£o do pixel
 		glfwGetWindowSize(window, &w, &h);
-		pickColor(xpos, h - ypos); // cor do pixel
+		pickColor(xpos, h - ypos, pixel); // cor do pixel
+
+		if (pixel[0] || pixel[1] || pixel[2]) {
+			cout << "\nCor Escolhida: R: " << (int)pixel[0]  << " G: " << (int)pixel[1]  << " B: " << (int)pixel[2]  << endl;
+
+			gameManager(pixel, colors);
+
+		}
+		else
+			cout << "A cor preta nao pode ser selecionada, favor, " + playerAtual + ", escolha novamente!" << endl;
 	}
 }
 
-// Esta funÁ„o est· bastante harcoded 
+// Esta fun√ß√£o est√° bastante harcoded 
 int setup()
 {
 	GLfloat vertices[] = {
-		-0.5f, -0.15f, 0.0f, 0.0f, 0.0f, 1.0f,  // VÈrtice ret‚ngulo
-		-0.5f, 0.15f, 0.0f, 0.0f, 0.0f, 1.0f,   // VÈrtice ret‚ngulo
-		0.5f, -0.15f, 0.0f, 0.0f, 0.0f, 1.0f,   // VÈrtice ret‚ngulo
-		0.5f, 0.15f, 0.0f, 0.0f, 0.0f, 1.0f,    // VÈrtice ret‚ngulo 
-		-0.5f, -0.5f, 0.0f,   1.0f, 0.0f, 0.0f, // VÈrtice cores  (R)
-		0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,  // VÈrtice cores  (G)
-		0.5f,  0.5f, 0.0f,   0.0f, 0.0f, 1.0f,  // VÈrtice cores  (B)
-	   -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 1.0f   // VÈrtice cores  (RGB)
+		-0.5f, -0.15f, 0.0f, 0.0f, 0.0f, 1.0f,  // V√©rtice ret√¢ngulo
+		-0.5f, 0.15f, 0.0f, 0.0f, 0.0f, 1.0f,   // V√©rtice ret√¢ngulo
+		0.5f, -0.15f, 0.0f, 0.0f, 0.0f, 1.0f,   // V√©rtice ret√¢ngulo
+		0.5f, 0.15f, 0.0f, 0.0f, 0.0f, 1.0f,    // V√©rtice ret√¢ngulo 
+
 	};
 
 	GLuint VBO, VAO;
-	
+
 	glGenBuffers(1, &VBO);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 	glGenVertexArrays(1, &VAO);
 	glBindVertexArray(VAO);
-	
-	//Atributo 0 - posiÁ„o
+
+	//Atributo 0 - posi√ß√£o
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
 
@@ -195,23 +268,59 @@ int setup()
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
 	glEnableVertexAttribArray(1);
 
-	glBindBuffer(GL_ARRAY_BUFFER, 0); 
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	// Desvincula o VAO (È uma boa pr·tica desvincular qualquer buffer ou array para evitar bugs medonhos)
-	glBindVertexArray(0); 
+	// Desvincula o VAO (√© uma boa pr√°tica desvincular qualquer buffer ou array para evitar bugs medonhos)
+	glBindVertexArray(0);
 
 	return VAO;
 }
 
-void pickColor(GLdouble xpos, GLdouble ypos) {
+void pickColor(GLdouble xpos, GLdouble ypos, unsigned char pixelOut[4]) {
 	unsigned char pixel[4];
 	glReadPixels(xpos, ypos, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &pixel);
-	if(pixel[0] || pixel[1] || pixel[2]) // se a cor for diferente de preto
-		cout << "R: " << (int)pixel[0] << " G: " << (int)pixel[1] << " B: " << (int)pixel[2] << endl;
+	if (pixel[0] || pixel[1] || pixel[2]) { // se a cor for diferente de preto
+		for (int i = 0; i < 4; ++i) {
+			pixelOut[i] = pixel[i];
+		}
+	}
 }
-/*
-??? initRandomColors()
-{
-	// sortear e armazenar as cores em uma colorMatrix[COLUMNS][LINES] de glm::vec3
+//Calcula dist√¢ncia euclidiana entre os pontos
+float colorDistance(unsigned char color1[4], glm::vec3 color2) {
+
+
+	float dR = (color1[0] / 255.0f - color2[0]);
+	float dG = (color1[1] / 255.0f - color2[1]);
+	float dB = (color1[2] / 255.0f - color2[2]);
+
+	float sumOfSquares = dR * dR + dG * dG + dB * dB;
+
+	return sqrt(sumOfSquares);
 }
-*/
+
+void gameManager(unsigned char pixel[4], std::vector<glm::vec3>& colors) {
+	int similarColors = 0;
+	float distanceThereshold = 0.3;
+
+	for (int i = 0; i < colors.size(); ++i) {
+		float distance = colorDistance(pixel, colors[i]);
+		if (distance < distanceThereshold) {
+			similarColors++;
+			colors[i] = glm::vec3(0, 0, 0);
+		}
+	}
+
+	if (playerAtual == player1Name) {
+		pontuacaoPlayer1 += similarColors;
+		jogadasRestantesPlayer1--;
+	}
+	else {
+		pontuacaoPlayer2 += similarColors;
+		jogadasRestantesPlayer2--;
+	} 
+
+	std::cout << "Quantidade de cores similares escolhida por " << playerAtual + ": " + std::to_string(similarColors) << endl;
+	std::cout << "Pontuacao atual de " + playerAtual + ": " + std::to_string((playerAtual == player1Name) ? pontuacaoPlayer1 : pontuacaoPlayer2) << endl;
+
+	(playerAtual == player1Name) ? playerAtual = player2Name : playerAtual = player1Name;
+}

@@ -1,15 +1,17 @@
-/* Hello Triangle - cÛdigo adaptado de https://learnopengl.com/#!Getting-started/Hello-Triangle 
+Ôªø/* Hello Triangle - c√≥digo adaptado de https://learnopengl.com/#!Getting-started/Hello-Triangle 
  *
  * Adaptado por Rossana Baptista Queiroz
- * para a disciplina de Processamento Gr·fico - Unisinos
- * Vers„o inicial: 7/4/2017
- * ⁄ltima atualizaÁ„o em 14/08/2023
+ * para a disciplina de Processamento Gr√°fico - Unisinos
+ * Vers√£o inicial: 7/4/2017
+ * √öltima atualiza√ß√£o em 14/08/2023
  *
  */
+
 
 #include <iostream>
 #include <string>
 #include <assert.h>
+#include "Sprite.h"
 
 //GLM
 #include <glm/glm.hpp> 
@@ -21,33 +23,36 @@
 
 
 using namespace std;
-//using namespace glm; //para n„o usar glm::
+//using namespace glm; //para n√£o usar glm::
 
-//Classe para manipulaÁ„o dos shaders
+//Classe para manipula√ß√£o dos shaders
 #include "Shader.h"
 
-// ProtÛtipo da funÁ„o de callback de teclado
+// Vari√°vel global para controlar a rota√ß√£o dos sprites
+bool enableRotation = false;
+
+// Prot√≥tipo da fun√ß√£o de callback de teclado
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
 
-// ProtÛtipos das funÁıes
+// Prot√≥tipos das fun√ß√µes
 int setupGeometry();
 int exercicio5();
 int exercicio8();
 void drawScene(int VAO, int texID);
 GLuint loadTexture(string texturePath);
 
-// Dimensıes da janela (pode ser alterado em tempo de execuÁ„o)
+// Dimens√µes da janela (pode ser alterado em tempo de execu√ß√£o)
 const GLuint WIDTH = 800, HEIGHT = 600;
 
-// FunÁ„o MAIN
+// Fun√ß√£o MAIN
 int main()
 {
-	// InicializaÁ„o da GLFW
+	// Inicializa√ß√£o da GLFW
 	glfwInit();
 
-	//Muita atenÁ„o aqui: alguns ambientes n„o aceitam essas configuraÁıes
-	//VocÍ deve adaptar para a vers„o do OpenGL suportada por sua placa
-	//Sugest„o: comente essas linhas de cÛdigo para desobrir a vers„o e
+	//Muita aten√ß√£o aqui: alguns ambientes n√£o aceitam essas configura√ß√µes
+	//Voc√™ deve adaptar para a vers√£o do OpenGL suportada por sua placa
+	//Sugest√£o: comente essas linhas de c√≥digo para desobrir a vers√£o e
 	//depois atualize (por exemplo: 4.5 com 4 e 5)
 	/*glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
@@ -58,48 +63,78 @@ int main()
 //	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 //#endif
 
-	// CriaÁ„o da janela GLFW
+	// Cria√ß√£o da janela GLFW
 	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Texturas", nullptr, nullptr);
 	glfwMakeContextCurrent(window);
 
-	// Fazendo o registro da funÁ„o de callback para a janela GLFW
+	// Fazendo o registro da fun√ß√£o de callback para a janela GLFW
 	glfwSetKeyCallback(window, key_callback);
 
-	// GLAD: carrega todos os ponteiros d funÁıes da OpenGL
+	// GLAD: carrega todos os ponteiros d fun√ß√µes da OpenGL
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
 		cout << "Failed to initialize GLAD" << endl;
 
 	}
 
-	// Obtendo as informaÁıes de vers„o
+	// Obtendo as informa√ß√µes de vers√£o
 	const GLubyte* renderer = glGetString(GL_RENDERER); /* get renderer string */
 	const GLubyte* version = glGetString(GL_VERSION); /* version as a string */
 	cout << "Renderer: " << renderer << endl;
 	cout << "OpenGL version supported " << version << endl;
+	cout << "Pressione 'R' para aplicar a matriz de rota√ß√£o nos Sprites " << endl;
 
 	// Compilando e buildando o programa de shader
 	//Shader shader("../shaders/helloTriangle.vs", "../shaders/helloTriangle.fs");
 	Shader shader("../shaders/tex.vs", "../shaders/tex.fs");
 
-	// Gerando um buffer simples, com a geometria de um tri‚ngulo
+	// Gerando um buffer simples, com a geometria de um tri√¢ngulo
 	//GLuint VAO = exercicio5();
 	//GLuint VAO = exercicio8();
 	GLuint VAO = setupGeometry();
 	
-	GLuint texID = loadTexture("../../Textures/pixelWall.png");
+	GLuint texID = loadTexture("../../Textures/Battleground1.png");
+	GLuint texID1 = loadTexture("../../Textures/Steve.png");
+	GLuint texID2 = loadTexture("../../Textures/Hero.png");
+	GLuint texID3 = loadTexture("../../Textures/TNT.png");
+	GLuint texID4 = loadTexture("../../Textures/EnderDragon.png");
+	GLuint texID5 = loadTexture("../../Textures/Creeper.png");
 	
 	//Ativando o buffer de textura 0 da opengl
 	glActiveTexture(GL_TEXTURE0);
 
 	shader.Use();
+	// habilitando a transparencia do PNG
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	//Matriz de projeÁ„o paralela ortogr·fica
+	// Criando uma inst√¢ncia da classe Sprite
+	Sprite sprite(texID1, &shader);
+	sprite.position = glm::vec3(100.0f, 150.0f, 0.0f);
+	sprite.scale = glm::vec3(200.0f, 300.0f, 0.0f);
+
+	Sprite sprite2(texID2, &shader);
+	sprite2.position = glm::vec3(700.0f, 200.0f, 0.0f);
+	sprite2.scale = glm::vec3(300.0f, 300.0f, 0.0f);
+
+	Sprite sprite3(texID3, &shader);
+	sprite3.position = glm::vec3(550.0f, 100.0f, 0.0f);
+	sprite3.scale = glm::vec3(150.0f, 150.0f, 0.0f);
+
+	Sprite sprite4(texID4, &shader);
+	sprite4.position = glm::vec3(200.0f, 500.0f, 0.0f);
+	sprite4.scale = glm::vec3(400.0f, 400.0f, 0.0f);
+
+	Sprite sprite5(texID5, &shader);
+	sprite5.position = glm::vec3(300.0f, 200.0f, 0.0f);
+	sprite5.scale = glm::vec3(300.0f, 300.0f, 0.0f);
+
+	//Matriz de proje√ß√£o paralela ortogr√°fica
 	glm::mat4 projection = glm::ortho(0.0,800.0,0.0,600.0,-1.0,1.0);
 	//Enviando para o shader a matriz como uma var uniform
 	shader.setMat4("projection", glm::value_ptr(projection));
 	
-	//Matriz de transformaÁ„o do objeto (matriz de modelo)
+	//Matriz de transforma√ß√£o do objeto (matriz de modelo)
 	glm::mat4 model = glm::mat4(1); //matriz identidade
 	model = glm::translate(model, glm::vec3(400.0, 300.0, 0.0));
 	model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0.0, 0.0, 1.0));
@@ -108,13 +143,13 @@ int main()
 
 	shader.setInt("texBuffer", 0);
 
-	// Loop da aplicaÁ„o - "game loop"
+	// Loop da aplica√ß√£o - "game loop"
 	while (!glfwWindowShouldClose(window))
 	{
-		// Checa se houveram eventos de input (key pressed, mouse moved etc.) e chama as funÁıes de callback correspondentes
+		// Checa se houveram eventos de input (key pressed, mouse moved etc.) e chama as fun√ß√µes de callback correspondentes
 		glfwPollEvents();
 
-		// Definindo as dimensıes da viewport com as mesmas dimensıes da janela da aplicaÁ„o
+		// Definindo as dimens√µes da viewport com as mesmas dimens√µes da janela da aplica√ß√£o
 		int width, height;
 		glfwGetFramebufferSize(window, &width, &height);
 		glViewport(0, 0, width, height); //unidades de tela: pixel
@@ -126,42 +161,52 @@ int main()
 		glLineWidth(10);
 		glPointSize(20);
 		
-		//Modificar a rotaÁ„o para animaÁ„o 
+		//Modificar a rota√ß√£o para anima√ß√£o 
 		float angle = (float) glfwGetTime();
 		model = glm::mat4(1); //matriz identidade
 		model = glm::translate(model, glm::vec3(400.0, 300.0, 0.0));
-		model = glm::rotate(model, angle, glm::vec3(0.0, 0.0, 1.0));	
+		//model = glm::rotate(model, angle, glm::vec3(0.0, 0.0, 1.0));	
 		model = glm::scale(model, glm::vec3(300.0, 300.0, 0.0));
 		shader.setMat4("model", glm::value_ptr(model));
 
 		//Chamadas de desenho da cena
 		drawScene(VAO, texID);
+		sprite.draw(enableRotation);
+		sprite2.draw(enableRotation);
+		sprite3.draw(enableRotation);
+		sprite4.draw(enableRotation);
+		sprite5.draw(enableRotation);
+
 
 		// Troca os buffers da tela
 		glfwSwapBuffers(window);
 	}
 	// Pede pra OpenGL desalocar os buffers
 	glDeleteVertexArrays(1, &VAO);
-	// Finaliza a execuÁ„o da GLFW, limpando os recursos alocados por ela
+	// Finaliza a execu√ß√£o da GLFW, limpando os recursos alocados por ela
 	glfwTerminate();
 	return 0;
 }
 
-// FunÁ„o de callback de teclado - sÛ pode ter uma inst‚ncia (deve ser est·tica se
-// estiver dentro de uma classe) - … chamada sempre que uma tecla for pressionada
+// Fun√ß√£o de callback de teclado - s√≥ pode ter uma inst√¢ncia (deve ser est√°tica se
+// estiver dentro de uma classe) - √â chamada sempre que uma tecla for pressionada
 // ou solta via GLFW
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, GL_TRUE);
+	//Pressionando a tecla R habilita rota√ß√£o dos sprites
+	if (key == GLFW_KEY_R && action == GLFW_PRESS)
+		enableRotation = !enableRotation;
+	
 }
 
 int exercicio5()
 {
-	// Aqui setamos as coordenadas x, y e z do tri‚ngulo e as armazenamos de forma
-	// sequencial, j· visando mandar para o VBO (Vertex Buffer Objects)
-	// Cada atributo do vÈrtice (coordenada, cores, coordenadas de textura, normal, etc)
-	// Pode ser arazenado em um VBO ˙nico ou em VBOs separados
+	// Aqui setamos as coordenadas x, y e z do tri√¢ngulo e as armazenamos de forma
+	// sequencial, j√° visando mandar para o VBO (Vertex Buffer Objects)
+	// Cada atributo do v√©rtice (coordenada, cores, coordenadas de textura, normal, etc)
+	// Pode ser arazenado em um VBO √∫nico ou em VBOs separados
 	GLfloat vertices[] = {
 		//x   y     z
 		//Triangulo 0
@@ -175,33 +220,33 @@ int exercicio5()
 	};
 
 	GLuint VBO, VAO;
-	//GeraÁ„o do identificador do VBO
+	//Gera√ß√£o do identificador do VBO
 	glGenBuffers(1, &VBO);
-	//Faz a conex„o (vincula) do buffer como um buffer de array
+	//Faz a conex√£o (vincula) do buffer como um buffer de array
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	//Envia os dados do array de floats para o buffer da OpenGl
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 	//                                              vertices.data()  
-	//GeraÁ„o do identificador do VAO (Vertex Array Object)
+	//Gera√ß√£o do identificador do VAO (Vertex Array Object)
 	glGenVertexArrays(1, &VAO);
-	// Vincula (bind) o VAO primeiro, e em seguida  conecta e seta o(s) buffer(s) de vÈrtices
+	// Vincula (bind) o VAO primeiro, e em seguida  conecta e seta o(s) buffer(s) de v√©rtices
 	// e os ponteiros para os atributos 
 	glBindVertexArray(VAO);
 	//Para cada atributo do vertice, criamos um "AttribPointer" (ponteiro para o atributo), indicando: 
-	// LocalizaÁ„o no shader * (a localizaÁ„o dos atributos devem ser correspondentes no layout especificado no vertex shader)
+	// Localiza√ß√£o no shader * (a localiza√ß√£o dos atributos devem ser correspondentes no layout especificado no vertex shader)
 	// Numero de valores que o atributo tem (por ex, 3 coordenadas xyz) 
 	// Tipo do dado
-	// Se est· normalizado (entre zero e um)
+	// Se est√° normalizado (entre zero e um)
 	// Tamanho em bytes 
 	// Deslocamento a partir do byte zero 
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
 
-	// Observe que isso È permitido, a chamada para glVertexAttribPointer registrou o VBO como o objeto de buffer de vÈrtice 
-	// atualmente vinculado - para que depois possamos desvincular com seguranÁa
+	// Observe que isso √© permitido, a chamada para glVertexAttribPointer registrou o VBO como o objeto de buffer de v√©rtice 
+	// atualmente vinculado - para que depois possamos desvincular com seguran√ßa
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	// Desvincula o VAO (È uma boa pr·tica desvincular qualquer buffer ou array para evitar bugs medonhos)
+	// Desvincula o VAO (√© uma boa pr√°tica desvincular qualquer buffer ou array para evitar bugs medonhos)
 	glBindVertexArray(0);
 
 	return VAO;
@@ -209,10 +254,10 @@ int exercicio5()
 
 int exercicio8()
 {
-	// Aqui setamos as coordenadas x, y e z do tri‚ngulo e as armazenamos de forma
-	// sequencial, j· visando mandar para o VBO (Vertex Buffer Objects)
-	// Cada atributo do vÈrtice (coordenada, cores, coordenadas de textura, normal, etc)
-	// Pode ser arazenado em um VBO ˙nico ou em VBOs separados
+	// Aqui setamos as coordenadas x, y e z do tri√¢ngulo e as armazenamos de forma
+	// sequencial, j√° visando mandar para o VBO (Vertex Buffer Objects)
+	// Cada atributo do v√©rtice (coordenada, cores, coordenadas de textura, normal, etc)
+	// Pode ser arazenado em um VBO √∫nico ou em VBOs separados
 	GLfloat vertices[] = {
 		//x   y     z    r   g    b
 		//Triangulo 0
@@ -226,27 +271,27 @@ int exercicio8()
 	};
 
 	GLuint VBO, VAO;
-	//GeraÁ„o do identificador do VBO
+	//Gera√ß√£o do identificador do VBO
 	glGenBuffers(1, &VBO);
-	//Faz a conex„o (vincula) do buffer como um buffer de array
+	//Faz a conex√£o (vincula) do buffer como um buffer de array
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	//Envia os dados do array de floats para o buffer da OpenGl
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 	//                                              vertices.data()  
-	//GeraÁ„o do identificador do VAO (Vertex Array Object)
+	//Gera√ß√£o do identificador do VAO (Vertex Array Object)
 	glGenVertexArrays(1, &VAO);
-	// Vincula (bind) o VAO primeiro, e em seguida  conecta e seta o(s) buffer(s) de vÈrtices
+	// Vincula (bind) o VAO primeiro, e em seguida  conecta e seta o(s) buffer(s) de v√©rtices
 	// e os ponteiros para os atributos 
 	glBindVertexArray(VAO);
 	//Para cada atributo do vertice, criamos um "AttribPointer" (ponteiro para o atributo), indicando: 
-	// LocalizaÁ„o no shader * (a localizaÁ„o dos atributos devem ser correspondentes no layout especificado no vertex shader)
+	// Localiza√ß√£o no shader * (a localiza√ß√£o dos atributos devem ser correspondentes no layout especificado no vertex shader)
 	// Numero de valores que o atributo tem (por ex, 3 coordenadas xyz) 
 	// Tipo do dado
-	// Se est· normalizado (entre zero e um)
+	// Se est√° normalizado (entre zero e um)
 	// Tamanho em bytes 
 	// Deslocamento a partir do byte zero 
 	
-	//Atributo 0 - posiÁ„o
+	//Atributo 0 - posi√ß√£o
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
 
@@ -254,11 +299,11 @@ int exercicio8()
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3* sizeof(GLfloat)));
 	glEnableVertexAttribArray(1);
 
-	// Observe que isso È permitido, a chamada para glVertexAttribPointer registrou o VBO como o objeto de buffer de vÈrtice 
-	// atualmente vinculado - para que depois possamos desvincular com seguranÁa
+	// Observe que isso √© permitido, a chamada para glVertexAttribPointer registrou o VBO como o objeto de buffer de v√©rtice 
+	// atualmente vinculado - para que depois possamos desvincular com seguran√ßa
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	// Desvincula o VAO (È uma boa pr·tica desvincular qualquer buffer ou array para evitar bugs medonhos)
+	// Desvincula o VAO (√© uma boa pr√°tica desvincular qualquer buffer ou array para evitar bugs medonhos)
 	glBindVertexArray(0);
 
 	return VAO;
@@ -267,40 +312,43 @@ int exercicio8()
 
 int setupGeometry()
 {
-	// Aqui setamos as coordenadas x, y e z do tri‚ngulo e as armazenamos de forma
-	// sequencial, j· visando mandar para o VBO (Vertex Buffer Objects)
-	// Cada atributo do vÈrtice (coordenada, cores, coordenadas de textura, normal, etc)
-	// Pode ser arazenado em um VBO ˙nico ou em VBOs separados
+	// Aqui setamos as coordenadas x, y e z do tri√¢ngulo e as armazenamos de forma
+	// sequencial, j√° visando mandar para o VBO (Vertex Buffer Objects)
+	// Cada atributo do v√©rtice (coordenada, cores, coordenadas de textura, normal, etc)
+	// Pode ser arazenado em um VBO √∫nico ou em VBOs separados
 	GLfloat vertices[] = {
-		//x     y    z    r    g    b    s    t
+		//x     y     z    r    g    b    s    t
 		//Triangulo 0
-		-0.5 , -0.5, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,  //v0
-		 0.5 , -0.5, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0,  //v1
-		 0.0 ,  0.5, 0.0, 0.0, 0.0, 1.0, 0.5, 1.0   //v2 
+		-1.0 , -1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0,  //v0
+		 1.0 , -1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0,  //v1
+		-1.0 ,  1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,   //v2
+		 1.0 , -1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0,  //v1
+		-1.0 ,  1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,   //v2
+		 1.0 ,  1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0,   //v2
 	};
 
 	GLuint VBO, VAO;
-	//GeraÁ„o do identificador do VBO
+	//Gera√ß√£o do identificador do VBO
 	glGenBuffers(1, &VBO);
-	//Faz a conex„o (vincula) do buffer como um buffer de array
+	//Faz a conex√£o (vincula) do buffer como um buffer de array
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	//Envia os dados do array de floats para o buffer da OpenGl
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 	//                                              vertices.data()  
-	//GeraÁ„o do identificador do VAO (Vertex Array Object)
+	//Gera√ß√£o do identificador do VAO (Vertex Array Object)
 	glGenVertexArrays(1, &VAO);
-	// Vincula (bind) o VAO primeiro, e em seguida  conecta e seta o(s) buffer(s) de vÈrtices
+	// Vincula (bind) o VAO primeiro, e em seguida  conecta e seta o(s) buffer(s) de v√©rtices
 	// e os ponteiros para os atributos 
 	glBindVertexArray(VAO);
 	//Para cada atributo do vertice, criamos um "AttribPointer" (ponteiro para o atributo), indicando: 
-	// LocalizaÁ„o no shader * (a localizaÁ„o dos atributos devem ser correspondentes no layout especificado no vertex shader)
+	// Localiza√ß√£o no shader * (a localiza√ß√£o dos atributos devem ser correspondentes no layout especificado no vertex shader)
 	// Numero de valores que o atributo tem (por ex, 3 coordenadas xyz) 
 	// Tipo do dado
-	// Se est· normalizado (entre zero e um)
+	// Se est√° normalizado (entre zero e um)
 	// Tamanho em bytes 
 	// Deslocamento a partir do byte zero 
 
-	//Atributo 0 - posiÁ„o
+	//Atributo 0 - posi√ß√£o
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
 
@@ -313,11 +361,11 @@ int setupGeometry()
 	glEnableVertexAttribArray(2);
 
 
-	// Observe que isso È permitido, a chamada para glVertexAttribPointer registrou o VBO como o objeto de buffer de vÈrtice 
-	// atualmente vinculado - para que depois possamos desvincular com seguranÁa
+	// Observe que isso √© permitido, a chamada para glVertexAttribPointer registrou o VBO como o objeto de buffer de v√©rtice 
+	// atualmente vinculado - para que depois possamos desvincular com seguran√ßa
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	// Desvincula o VAO (È uma boa pr·tica desvincular qualquer buffer ou array para evitar bugs medonhos)
+	// Desvincula o VAO (√© uma boa pr√°tica desvincular qualquer buffer ou array para evitar bugs medonhos)
 	glBindVertexArray(0);
 
 	return VAO;
@@ -330,18 +378,18 @@ void drawScene(int VAO, int texID)
 	glBindTexture(GL_TEXTURE_2D, texID);
 	glBindVertexArray(VAO); //Conectando ao buffer de geometria
 
-		//1 - PolÌgono Preenchido
+		//1 - Pol√≠gono Preenchido
 
-		//glUniform4f(colorLoc, 0.0f, 0.0f, 1.0f, 1.0f); //enviando cor para vari·vel uniform inputColor
+		//glUniform4f(colorLoc, 0.0f, 0.0f, 1.0f, 1.0f); //enviando cor para vari√°vel uniform inputColor
 		//shader.setVec4("inputColor", 0.0f, 0.0f, 1.0f, 1.0f);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 
-	//2 - PolÌgono com contorno
+	//2 - Pol√≠gono com contorno
 	//shader.setVec4("inputColor", 0.0f, 1.0f, 1.0f, 1.0f); //magenta
 	//glDrawArrays(GL_LINE_LOOP, 0, 3);
 	//glDrawArrays(GL_LINE_LOOP, 3, 3);
 
-	//3 - Apenas os vÈrtices dos polÌgonos
+	//3 - Apenas os v√©rtices dos pol√≠gonos
 	//shader.setVec4("inputColor", 1.0f, 1.0f, 0.0f, 1.0f);
 	//glDrawArrays(GL_POINTS, 0, 6);
 
@@ -352,15 +400,15 @@ GLuint loadTexture(string texturePath)
 {
 	GLuint texID;
 
-	// Gera o identificador da textura na memÛria 
+	// Gera o identificador da textura na mem√≥ria 
 	glGenTextures(1, &texID);
 	glBindTexture(GL_TEXTURE_2D, texID);
 
-	//ConfiguraÁ„o do par‚metro WRAPPING nas coords s e t
+	//Configura√ß√£o do par√¢metro WRAPPING nas coords s e t
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-	//ConfirugaÁ„o do par‚metro FILTERING na minificaÁ„o e magnificaÁ„o da textura
+	//Confiruga√ß√£o do par√¢metro FILTERING na minifica√ß√£o e magnifica√ß√£o da textura
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
