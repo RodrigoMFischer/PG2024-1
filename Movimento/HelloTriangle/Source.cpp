@@ -1,4 +1,4 @@
-﻿/* Hello Triangle - código adaptado de https://learnopengl.com/#!Getting-started/Hello-Triangle
+﻿/* Hello Triangle - código adaptado de https://learnopengl.com/#!Getting-started/Hello-Triangle 
  *
  * Adaptado por Rossana Baptista Queiroz
  * para a disciplina de Processamento Gráfico - Unisinos
@@ -7,13 +7,14 @@
  *
  */
 
-
+//teste
 #include <iostream>
 #include <string>
 #include <assert.h>
 #include "Sprite.h"
+#include "MovingSprite.h"
 
- //GLM
+//GLM
 #include <glm/glm.hpp> 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -28,8 +29,11 @@ using namespace std;
 //Classe para manipulação dos shaders
 #include "Shader.h"
 
-// Variável global para controlar a rotação dos sprites
-bool enableRotation = false;
+// Variável global para controlar a movimentação dos sprites
+bool walkRight = false;
+bool walkLeft = false;
+bool walkUp = false;
+bool walkDown = false;
 
 // Protótipo da função de callback de teclado
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
@@ -82,7 +86,7 @@ int main()
 	const GLubyte* version = glGetString(GL_VERSION); /* version as a string */
 	cout << "Renderer: " << renderer << endl;
 	cout << "OpenGL version supported " << version << endl;
-	cout << "Pressione 'R' para aplicar a matriz de rotação nos Sprites " << endl;
+	cout << "Pressione 'ASDW' para movimentar o personagem " << endl;
 
 	// Compilando e buildando o programa de shader
 	//Shader shader("../shaders/helloTriangle.vs", "../shaders/helloTriangle.fs");
@@ -92,14 +96,15 @@ int main()
 	//GLuint VAO = exercicio5();
 	//GLuint VAO = exercicio8();
 	GLuint VAO = setupGeometry();
-
+	
 	GLuint texID = loadTexture("../../Textures/Battleground1.png");
 	GLuint texID1 = loadTexture("../../Textures/Steve.png");
 	GLuint texID2 = loadTexture("../../Textures/Hero.png");
 	GLuint texID3 = loadTexture("../../Textures/TNT.png");
 	GLuint texID4 = loadTexture("../../Textures/EnderDragon.png");
 	GLuint texID5 = loadTexture("../../Textures/Creeper.png");
-
+	GLuint texID6 = loadTexture("../../Textures/sully.png");
+	
 	//Ativando o buffer de textura 0 da opengl
 	glActiveTexture(GL_TEXTURE0);
 
@@ -108,32 +113,16 @@ int main()
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	// Criando uma instância da classe Sprite
-	Sprite sprite(texID1, &shader);
-	sprite.position = glm::vec3(100.0f, 150.0f, 0.0f);
-	sprite.scale = glm::vec3(200.0f, 300.0f, 0.0f);
-
-	Sprite sprite2(texID2, &shader);
-	sprite2.position = glm::vec3(700.0f, 200.0f, 0.0f);
-	sprite2.scale = glm::vec3(300.0f, 300.0f, 0.0f);
-
-	Sprite sprite3(texID3, &shader);
-	sprite3.position = glm::vec3(550.0f, 100.0f, 0.0f);
-	sprite3.scale = glm::vec3(150.0f, 150.0f, 0.0f);
-
-	Sprite sprite4(texID4, &shader);
-	sprite4.position = glm::vec3(200.0f, 500.0f, 0.0f);
-	sprite4.scale = glm::vec3(400.0f, 400.0f, 0.0f);
-
-	Sprite sprite5(texID5, &shader);
-	sprite5.position = glm::vec3(300.0f, 200.0f, 0.0f);
-	sprite5.scale = glm::vec3(300.0f, 300.0f, 0.0f);
+	// Criando uma instância da classe MovingSprite
+	MovingSprite character(texID6, &shader, 4, 4, 100);
+	character.position = glm::vec3(400.0f, 300.0f, 0.5f);
+	character.scale = glm::vec3(100.0f, 100.0f, 0.0f);
 
 	//Matriz de projeção paralela ortográfica
-	glm::mat4 projection = glm::ortho(0.0, 800.0, 0.0, 600.0, -1.0, 1.0);
+	glm::mat4 projection = glm::ortho(0.0,800.0,0.0,600.0,-1.0,1.0);
 	//Enviando para o shader a matriz como uma var uniform
 	shader.setMat4("projection", glm::value_ptr(projection));
-
+	
 	//Matriz de transformação do objeto (matriz de modelo)
 	glm::mat4 model = glm::mat4(1); //matriz identidade
 	model = glm::translate(model, glm::vec3(400.0, 300.0, 0.0));
@@ -148,21 +137,21 @@ int main()
 	{
 		// Checa se houveram eventos de input (key pressed, mouse moved etc.) e chama as funções de callback correspondentes
 		glfwPollEvents();
-
+		
 		// Definindo as dimensões da viewport com as mesmas dimensões da janela da aplicação
 		int width, height;
 		glfwGetFramebufferSize(window, &width, &height);
 		glViewport(0, 0, width, height); //unidades de tela: pixel
-
+		
 		// Limpa o buffer de cor
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f); //cor de fundo
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glLineWidth(10);
 		glPointSize(20);
-
+		
 		//Modificar a rotação para animação 
-		float angle = (float)glfwGetTime();
+		float angle = (float) glfwGetTime();
 		model = glm::mat4(1); //matriz identidade
 		model = glm::translate(model, glm::vec3(400.0, 300.0, 0.0));
 		//model = glm::rotate(model, angle, glm::vec3(0.0, 0.0, 1.0));	
@@ -171,11 +160,8 @@ int main()
 
 		//Chamadas de desenho da cena
 		drawScene(VAO, texID);
-		sprite.draw(enableRotation);
-		sprite2.draw(enableRotation);
-		sprite3.draw(enableRotation);
-		sprite4.draw(enableRotation);
-		sprite5.draw(enableRotation);
+		
+		character.draw(walkRight, walkLeft, walkUp, walkDown);
 
 
 		// Troca os buffers da tela
@@ -195,12 +181,57 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, GL_TRUE);
-	//Pressionando a tecla R habilita rotação dos sprites
-	if (key == GLFW_KEY_R && action == GLFW_PRESS)
-		enableRotation = !enableRotation;
+	
+	if (key == GLFW_KEY_D)
+	{
+		if (action == GLFW_PRESS)
+		{
+			walkRight = true;
+		}
+		else if (action == GLFW_RELEASE)
+		{
+			walkRight = false;
+		}
+	}
+	
+	if (key == GLFW_KEY_A)
+	{
+		if (action == GLFW_PRESS)
+		{
+			walkLeft = true;
+		}
+		else if (action == GLFW_RELEASE)
+		{
+			walkLeft = false;
+		}
+	}
 
+	if (key == GLFW_KEY_W)
+	{
+		if (action == GLFW_PRESS)
+		{
+			walkUp = true;
+		}
+		else if (action == GLFW_RELEASE)
+		{
+			walkUp = false;
+		}
+	}
+
+	if (key == GLFW_KEY_S)
+	{
+		if (action == GLFW_PRESS)
+		{
+			walkDown = true;
+		}
+		else if (action == GLFW_RELEASE)
+		{
+			walkDown = false;
+		}
+	}
 }
 
+/*
 int exercicio5()
 {
 	// Aqui setamos as coordenadas x, y e z do triângulo e as armazenamos de forma
@@ -213,10 +244,10 @@ int exercicio5()
 		-0.5 * 300 + 400, 0.5 + 300, 0.0, //v0
 		 0.0 + 400, 0.0 + 300, 0.0, //v1
 		 0.5 + 400, 0.5 + 300, 0.0, //v2 
-		 //Triangulo 1
-		  0.0 + 400, 0.0 + 300, 0.0, //v3
-		 -0.5 + 400,-0.5 + 300, 0.0, //v4
-		  0.5 + 400,-0.5 + 300, 0.0, //v5 
+		//Triangulo 1
+		 0.0 + 400, 0.0 + 300, 0.0, //v3
+		-0.5 + 400,-0.5 + 300, 0.0, //v4
+		 0.5 + 400,-0.5 + 300, 0.0, //v5 
 	};
 
 	GLuint VBO, VAO;
@@ -264,10 +295,10 @@ int exercicio8()
 		-0.5 * 300 + 400, 0.5 * 300 + 300, 0.0, 1.0, 0.0, 0.0,//v0
 		 0.0 * 300 + 400, 0.0 * 300 + 300, 0.0, 0.0, 1.0, 0.0,//v1
 		 0.5 * 300 + 400, 0.5 * 300 + 300, 0.0, 0.0, 0.0, 1.0,//v2 
-		 //Triangulo 1
-		  0.0 * 300 + 400, 0.0 * 300 + 300, 0.0, 1.0, 1.0, 0.0,//v3
-		 -0.5 * 300 + 400,-0.5 * 300 + 300, 0.0, 0.0, 1.0, 1.0,//v4
-		  0.5 * 300 + 400,-0.5 * 300 + 300, 0.0, 1.0, 0.0, 1.0,//v5 
+		//Triangulo 1
+		 0.0 * 300 + 400, 0.0 * 300 + 300, 0.0, 1.0, 1.0, 0.0,//v3
+		-0.5 * 300 + 400,-0.5 * 300 + 300, 0.0, 0.0, 1.0, 1.0,//v4
+		 0.5 * 300 + 400,-0.5 * 300 + 300, 0.0, 1.0, 0.0, 1.0,//v5 
 	};
 
 	GLuint VBO, VAO;
@@ -290,13 +321,13 @@ int exercicio8()
 	// Se está normalizado (entre zero e um)
 	// Tamanho em bytes 
 	// Deslocamento a partir do byte zero 
-
+	
 	//Atributo 0 - posição
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
 
 	//Atributo 1 - cor
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3* sizeof(GLfloat)));
 	glEnableVertexAttribArray(1);
 
 	// Observe que isso é permitido, a chamada para glVertexAttribPointer registrou o VBO como o objeto de buffer de vértice 
@@ -308,7 +339,7 @@ int exercicio8()
 
 	return VAO;
 }
-
+*/
 
 int setupGeometry()
 {
@@ -378,10 +409,10 @@ void drawScene(int VAO, int texID)
 	glBindTexture(GL_TEXTURE_2D, texID);
 	glBindVertexArray(VAO); //Conectando ao buffer de geometria
 
-	//1 - Polígono Preenchido
+		//1 - Polígono Preenchido
 
-	//glUniform4f(colorLoc, 0.0f, 0.0f, 1.0f, 1.0f); //enviando cor para variável uniform inputColor
-	//shader.setVec4("inputColor", 0.0f, 0.0f, 1.0f, 1.0f);
+		//glUniform4f(colorLoc, 0.0f, 0.0f, 1.0f, 1.0f); //enviando cor para variável uniform inputColor
+		//shader.setVec4("inputColor", 0.0f, 0.0f, 1.0f, 1.0f);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 
 	//2 - Polígono com contorno
@@ -437,3 +468,4 @@ GLuint loadTexture(string texturePath)
 
 	return texID;
 }
+
